@@ -1,0 +1,74 @@
+name: Create release and bundle for download
+
+on:
+  # Triggers the workflow push of date tag (eg 20220113)
+  push:
+    tags:
+      - "20*"
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y%m%d')"
+        
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      
+      - name: Create tag
+        if: startsWith(github.ref, 'refs/tags/') == false
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/${{ steps.date.outputs.date }}',
+              sha: context.sha
+            })
+
+      - name: Remove unnecessary files & folders
+        run: |
+          find $GITHUB_WORKSPACE -name dummy.gitignore -delete
+          rm -Rf $GITHUB_WORKSPACE/.git $GITHUB_WORKSPACE/.github
+        
+      - name: Archive workspace
+        run: |
+          cd $GITHUB_WORKSPACE
+          zip -rq /tmp/OnionOS-${{ steps.date.outputs.date }}.zip ./*
+          ls -lah /tmp/OnionOS-${{ steps.date.outputs.date }}.zip
+          
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.date.outputs.date }}
+          release_name: OnionOS-${{ steps.date.outputs.date }}
+          draft: true
+          prerelease: false
+          body: |
+            Changelog: 
+              - 
+              
+            Install Instructions:
+              1. 
+              
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: /tmp/OnionOS-${{ steps.date.outputs.date }}.zip
+          asset_name: OnionOS-${{ steps.date.outputs.date }}.zip
+          asset_content_type: application/zip
+          
