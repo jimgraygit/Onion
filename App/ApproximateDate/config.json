@@ -1,0 +1,7 @@
+{
+"label":"Approximate Date",
+"icon":"date.png",
+"iconsel":"date.png",
+"launch":"launch.sh",
+"description":"Set system clock to newest save state"
+}
